@@ -37,9 +37,10 @@ def seed_database():
             """)
             
     print(f"Inserting {len(insert_queries)} records into the database...")
+    from sqlalchemy import text
     with engine.begin() as conn:
         for query in insert_queries:
-            conn.execute(query)
+            conn.execute(text(query))
             
     print("✅ Database successfully seeded with real data!")
 
