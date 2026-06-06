@@ -30,8 +30,8 @@ function App() {
     setIsLoading(true)
 
     try {
-      // Assuming FastAPI is running on port 8000
-      const response = await axios.post('http://localhost:8000/api/chat', { query: input })
+      // Using relative path so Vite proxy handles the connection inside the Codespace
+      const response = await axios.post('/api/chat', { query: input })
       
       const { answer, chart_data, forecast_data } = response.data
       
