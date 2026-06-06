@@ -94,20 +94,27 @@ A stateful, multi-agent workflow orchestrated via LangGraph, exposed through a W
     docker compose up -d
     ```
 
-2.  **Install Dependencies:**
+2.  **Install Dependencies & Seed Data:**
     ```bash
     pip install -r requirements.txt 
-    # (Ensure you install apache-airflow, dbt-postgres, xgboost, scikit-learn, langgraph, langchain-openai, sqlalchemy, pandas, statsmodels)
+    
+    # Run the standalone script to download real stock data into your database
+    python seed_data.py
     ```
 
 3.  **Setup Environment Variables:**
-    ```bash
-    export OPENAI_API_KEY="your-api-key-here"
-    ```
+    Ensure you have a `.env` file with your `GOOGLE_API_KEY`.
 
-4.  **Run the LangGraph Application:**
+4.  **Run the Backend & Frontend:**
+    Start the FastAPI backend:
     ```bash
-    python agents/main_graph.py
+    uvicorn backend.main:app --reload
+    ```
+    In a new terminal, start the React frontend:
+    ```bash
+    cd frontend
+    npm install
+    npm run dev
     ```
 
 ---

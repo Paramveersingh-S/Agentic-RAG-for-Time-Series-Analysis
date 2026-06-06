@@ -11,3 +11,5 @@ fastapi
 uvicorn
 python-dotenv
 statsmodels
+apache-airflow
+dbt-postgres
