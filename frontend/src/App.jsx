@@ -38,8 +38,9 @@ function App() {
       setMessages(prev => [...prev, { role: 'ai', content: answer }])
       
       if (chart_data && chart_data.length > 0) {
-        // Reverse so chronological order is left to right
-        setChartData([...chart_data].reverse())
+        // Transform the raw data into chart-friendly format
+        const transformedData = transformChartData(chart_data)
+        setChartData(transformedData)
       }
       
       if (forecast_data) {
@@ -54,6 +55,39 @@ function App() {
     }
   }
 
+  // Transform raw API data into chart-friendly format
+  const transformChartData = (rawData) => {
+    // Group data by timestamp and metric name
+    const groupedByDate = {}
+    
+    rawData.forEach(item => {
+      if (!item.metric_name || item.metric_name.includes('_VOL')) {
+        return // Skip volume data
+      }
+      
+      const date = new Date(item.timestamp).toLocaleDateString('en-US', {
+        month: 'short',
+        day: 'numeric'
+      })
+      
+      if (!groupedByDate[date]) {
+        groupedByDate[date] = {
+          date: date,
+          timestamp: item.timestamp
+        }
+      }
+      
+      // Use metric name as key (AAPL, GOOGL, ^GSPC)
+      groupedByDate[date][item.metric_name] = item.metric_value
+    })
+    
+    // Convert to array and sort by timestamp
+    const chartArray = Object.values(groupedByDate)
+      .sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp))
+    
+    return chartArray
+  }
+
   // Combine historical and forecast data for the chart if both exist
   const renderChart = () => {
     if (chartData.length === 0 && !forecastData) {
@@ -66,52 +100,62 @@ function App() {
     if (forecastData && forecastData.predictions) {
       forecastData.predictions.forEach((pred, idx) => {
         combinedData.push({
-          metric_hour: `Forecast +${idx + 1}`,
-          forecast_value: pred
+          date: `Forecast +${idx + 1}`,
+          '^GSPC': pred // Use S&P 500 for forecast line
         })
       })
     }
 
     return (
-      <ResponsiveContainer width="100%" height="100%">
-        <LineChart data={combinedData} margin={{ top: 5, right: 20, bottom: 5, left: 0 }}>
+      <div style={{ width: '100%', height: '100%', minHeight: '350px' }}>
+        <ResponsiveContainer width="100%" height="100%">
+          <LineChart data={combinedData} margin={{ top: 5, right: 20, bottom: 5, left: 60 }}>
           <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.1)" />
           <XAxis 
-            dataKey="metric_hour" 
+            dataKey="date" 
             stroke="#94a3b8" 
-            tickFormatter={(tick) => {
-              if(tick.startsWith('Forecast')) return tick;
-              const d = new Date(tick);
-              return isNaN(d) ? tick : `${d.getMonth()+1}/${d.getDate()}`;
-            }}
+            style={{ fontSize: '12px' }}
           />
-          <YAxis stroke="#94a3b8" />
+          <YAxis stroke="#94a3b8" style={{ fontSize: '12px' }} />
           <Tooltip 
             contentStyle={{ backgroundColor: '#141a26', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px' }}
             itemStyle={{ color: '#f8fafc' }}
+            formatter={(value) => value ? `$${value.toFixed(2)}` : 'N/A'}
           />
           <Legend />
           <Line 
             type="monotone" 
-            name="Historical Value"
-            dataKey="target_value" 
+            name="S&P 500"
+            dataKey="^GSPC" 
             stroke="#3b82f6" 
-            strokeWidth={3}
-            dot={{ r: 4, fill: '#3b82f6' }}
+            strokeWidth={2.5}
+            dot={false}
             activeDot={{ r: 6 }} 
+            connectNulls={true}
           />
           <Line 
             type="monotone" 
-            name="Forecast Prediction"
-            dataKey="forecast_value" 
-            stroke="#8b5cf6" 
-            strokeWidth={3}
-            strokeDasharray="5 5"
-            dot={{ r: 4, fill: '#8b5cf6' }}
-            activeDot={{ r: 6 }} 
+            name="AAPL"
+            dataKey="AAPL" 
+            stroke="#10b981" 
+            strokeWidth={2.5}
+            dot={false}
+            activeDot={{ r: 6 }}
+            connectNulls={true}
+          />
+          <Line 
+            type="monotone" 
+            name="GOOGL"
+            dataKey="GOOGL" 
+            stroke="#f59e0b" 
+            strokeWidth={2.5}
+            dot={false}
+            activeDot={{ r: 6 }}
+            connectNulls={true}
           />
         </LineChart>
       </ResponsiveContainer>
+      </div>
     )
   }
 
@@ -128,7 +172,7 @@ function App() {
         <div className="chat-history">
           {messages.map((msg, idx) => (
             <div key={idx} className={`message ${msg.role}`}>
-              {msg.content}
+              <div className="message-content">{msg.content}</div>
             </div>
           ))}
           {isLoading && (

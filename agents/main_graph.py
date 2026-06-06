@@ -26,40 +26,69 @@ def synthesis_agent_node(state: AgentState):
     forecast_data = state.get("forecast_data", {})
     rag_context = state.get("rag_context", "")
     
-    llm = ChatGoogleGenerativeAI(model="gemini-1.5-flash", temperature=0.7)
+    # Format sql_data nicely
+    formatted_data = []
+    if isinstance(sql_data, list):
+        # Group by metric name and get latest values
+        metrics_dict = {}
+        for item in sql_data[:20]:
+            if isinstance(item, dict):
+                metric_name = item.get('metric_name', 'Unknown')
+                metric_value = item.get('metric_value', 0)
+                timestamp = item.get('timestamp', '')
+                
+                # Only include price data, not volume for cleaner display
+                if '_VOL' not in metric_name:
+                    if metric_name not in metrics_dict:
+                        metrics_dict[metric_name] = []
+                    metrics_dict[metric_name].append({
+                        'value': metric_value,
+                        'timestamp': str(timestamp)[:10]  # Just date
+                    })
+        
+        # Format as readable markdown
+        for metric, values in sorted(metrics_dict.items()):
+            if values:
+                latest = values[0]
+                formatted_data.append(f"- **{metric}**: ${latest['value']:.2f} (as of {latest['timestamp']})")
     
-    system_prompt = f"""
-    You are an expert Data Engineer and AI Architect. A user has asked the following question about their time-series data:
-    "{query}"
+    data_section = "\n".join(formatted_data) if formatted_data else "No price data available"
     
-    You have been provided with data gathered from specialized sub-agents:
-    
-    1. SQL Database Data (Exact Numbers):
-    {sql_data}
-    
-    2. Time-Series Forecast Data (Predictions):
-    {forecast_data}
-    
-    3. Historical Context (Vector RAG / Anomaly Explanations):
-    {rag_context}
-    
-    Combine these inputs into a cohesive, conversational, and highly accurate natural language response.
-    If an agent returned "skipped" or empty data, simply ignore that aspect. 
-    Explain the anomalies based on the RAG context, provide the hard numbers from the SQL data, and discuss future trends using the forecast data.
-    Format your response cleanly using markdown (e.g., bolding numbers).
-    """
-    
-    if not os.environ.get("GOOGLE_API_KEY"):
-        final_answer = f"[MOCK RESPONSE]\nBased on the data:\nSQL: {sql_data}\nForecast: {forecast_data}\nContext: {rag_context}\n(This is a mock response because GOOGLE_API_KEY is not set)."
-        message = AIMessage(content=final_answer)
+    # Format forecast nicely
+    forecast_section = ""
+    if forecast_data and "predictions" in forecast_data:
+        preds = forecast_data["predictions"]
+        forecast_section = "**7-Day Price Forecast:**\n"
+        for i, pred in enumerate(preds, 1):
+            forecast_section += f"- Day {i}: ${pred:,.2f}\n"
     else:
-        try:
-            # Gemini chat doesn't use the 'system' role in the same way OpenAI does by default in basic invoke,
-            # but Langchain handles message conversion. For robust Gemini prompting, we can just send it as a Human message.
-            response = llm.invoke(system_prompt)
-            message = AIMessage(content=response.content)
-        except Exception as e:
-            message = AIMessage(content=f"Error generating synthesis: {e}")
+        forecast_section = "Forecast data unavailable"
+    
+    # Build a professional markdown response
+    final_answer = f"""## Market Analysis Report
+
+### 📊 Recent Closing Prices
+{data_section}
+
+### 📈 {forecast_section}
+
+### 🔍 Market Insights
+{rag_context if rag_context and rag_context != "skipped" else "No recent anomalies detected in the historical data."}
+
+---
+*Analysis based on real-time market data with ARIMA time-series forecasting*"""
+    
+    try:
+        llm = ChatGoogleGenerativeAI(model="gemini-pro", temperature=0.7)
+        response = llm.invoke(f"""Provide a brief, professional market analysis based on this report:
+{final_answer}
+
+Keep it concise (2-3 sentences) and focus on actionable insights.""")
+        message = AIMessage(content=response.content)
+    except Exception as e:
+        # Fallback if LLM fails - just return the structured data
+        print(f"LLM synthesis failed: {e}")
+        message = AIMessage(content=final_answer)
             
     return {"messages": [message]}
 

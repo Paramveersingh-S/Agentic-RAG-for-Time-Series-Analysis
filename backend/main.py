@@ -24,7 +24,7 @@ class QueryRequest(BaseModel):
 
 class QueryResponse(BaseModel):
     answer: str
-    chart_data: dict | None = None
+    chart_data: list | None = None
     forecast_data: dict | None = None
 
 @app.post("/api/chat", response_model=QueryResponse)
@@ -53,3 +53,7 @@ async def chat_endpoint(request: QueryRequest):
 @app.get("/api/health")
 async def health_check():
     return {"status": "ok"}
+
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run(app, host="0.0.0.0", port=8000, reload=True)

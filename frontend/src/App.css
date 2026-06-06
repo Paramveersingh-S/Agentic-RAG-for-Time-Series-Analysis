@@ -31,6 +31,8 @@
   display: flex;
   flex-direction: column;
   gap: 2rem;
+  min-height: 600px;
+  height: 100%;
 }
 
 .header {
@@ -80,6 +82,38 @@
   line-height: 1.5;
   animation: fadeIn 0.4s ease forwards;
   max-width: 90%;
+}
+
+.message-content {
+  white-space: pre-wrap;
+  word-wrap: break-word;
+  word-break: break-word;
+}
+
+.message-content h2 {
+  font-size: 1.25rem;
+  font-weight: 600;
+  margin: 1rem 0 0.75rem 0;
+}
+
+.message-content h3 {
+  font-size: 1.1rem;
+  font-weight: 500;
+  margin: 0.75rem 0 0.5rem 0;
+}
+
+.message-content ul {
+  margin: 0.5rem 0;
+  padding-left: 1.5rem;
+}
+
+.message-content li {
+  margin: 0.25rem 0;
+}
+
+.message-content strong {
+  font-weight: 600;
+  color: #60a5fa;
 }
 
 @keyframes fadeIn {
@@ -155,6 +189,10 @@
   flex: 1;
   display: flex;
   flex-direction: column;
+  justify-content: center; /* Vertically centers contents if there is extra space */
+  height: 100%;
+  width: 100%;
+  padding: 1rem; /* Optional: adds a little breathing room inside the panel */
 }
 
 .chart-title {
@@ -165,14 +203,16 @@
   display: flex;
   align-items: center;
   gap: 0.75rem;
+  flex-shrink: 0; /* Prevents the title from getting squished */
 }
 
 .chart-icon {
   color: var(--accent-secondary);
 }
 
+/* For the empty state / loading state */
 .placeholder-viz {
-  flex: 1;
+  flex: 1; /* Takes up all remaining vertical space */
   display: flex;
   align-items: center;
   justify-content: center;
@@ -181,4 +221,15 @@
   border-radius: 16px;
   font-weight: 300;
   letter-spacing: 0.5px;
+  min-height: 300px; /* A safer minimum height that won't break the screen */
+}
+
+/* Replaces your brittle '> div' selectors. 
+   Wrap your actual chart (e.g., Recharts ResponsiveContainer) in a div with this class */
+.chart-content-wrapper {
+  flex: 1;
+  width: 100%;
+  min-height: 0; /* CRITICAL: Allows flex children to shrink properly without overflowing */
+  display: flex;
+  flex-direction: column;
 }
