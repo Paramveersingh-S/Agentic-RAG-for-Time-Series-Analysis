@@ -13,28 +13,29 @@ An end-to-end multi-agent Retrieval-Augmented Generation (RAG) system built to p
 
 ## 🏗️ Architecture Overview
 
-The system is designed in a highly modular, 5-phase architecture:
+The system is designed in a highly modular, full-stack architecture:
 
 ```mermaid
 graph TD
     classDef db fill:#3366ff,stroke:#fff,stroke-width:2px,color:#fff;
     classDef agent fill:#ff9900,stroke:#fff,stroke-width:2px,color:#fff;
     classDef pipeline fill:#00cc66,stroke:#fff,stroke-width:2px,color:#fff;
+    classDef ui fill:#e11d48,stroke:#fff,stroke-width:2px,color:#fff;
 
     subgraph Data & ETL Pipeline
-        A[Airflow Ingestion]:::pipeline -->|Raw Metrics| B[(PostgreSQL Relational)]:::db
+        A[Airflow Ingestion with yfinance]:::pipeline -->|Real Market Data| B[(PostgreSQL Relational)]:::db
         B --> C[dbt Staging & Marts]:::pipeline
         C --> D[(PostgreSQL Marts)]:::db
     end
     
     subgraph Machine Learning Hub
         D --> E[Isolation Forest Anomaly Det.]:::pipeline
-        E -->|Triggers| F[LLM Context Generator]:::pipeline
+        E -->|Triggers| F[Gemini Context Generator]:::pipeline
         F -->|Embeddings| G[(pgvector Index)]:::db
     end
     
     subgraph LangGraph Multi-Agent System
-        U[User Query] --> H{Master Router}:::agent
+        U[FastAPI Backend]:::ui --> H{Master Router}:::agent
         H -->|Numerical Queries| I[SQL Agent]:::agent
         I -->|Queries| D
         H -->|Predictions| J[Time-Series Agent]:::agent
@@ -47,6 +48,10 @@ graph TD
         K --> L
         L --> M[Natural Language Response]
     end
+    
+    subgraph Web UI
+        W[React / Vite Frontend]:::ui <--> U
+    end
 ```
 
 ---
@@ -55,26 +60,22 @@ graph TD
 
 ### Phase 1: Data Storage (`pgvector`)
 We use a unified **PostgreSQL 16** instance as both a traditional analytical warehouse and a Vector Database.
-*   **Relational Schema:** Stores raw metrics (`timestamp`, `metric_name`, `metric_value`).
-*   **Vector Schema:** Uses the `pgvector` extension with HNSW indexing to store `VECTOR(1536)` embeddings of anomaly summaries.
 
 ### Phase 2: ETL Pipeline (Airflow & dbt)
-*   **Apache Airflow:** Orchestrates daily data generation/ingestion.
-*   **dbt (Data Build Tool):** Transforms raw data into staging and mart models, aggregating metrics to the hourly level and computing critical ML features (rolling averages, 1h/24h lag variables, standard deviations).
+*   **Apache Airflow:** Orchestrates daily ingestion of real stock market data (Apple, Google, S&P 500) via `yfinance`.
+*   **dbt (Data Build Tool):** Transforms raw data into staging and mart models, generating critical ML features (rolling averages, 1h/24h lag variables, standard deviations).
 
 ### Phase 3: Time-Series Modeling Hub
 A dedicated Python module (`time_series_hub.py`) housing standard algorithms:
 *   **ARIMA:** For baseline univariate forecasting.
 *   **XGBoost:** For multivariate forecasting utilizing dbt-generated lag features.
-*   **Isolation Forests:** For unsupervised anomaly detection. Anomalies trigger an LLM (GPT-3.5) to write a short contextual summary, which is embedded via `text-embedding-3-small` and saved to `pgvector`.
+*   **Isolation Forests:** For unsupervised anomaly detection. Anomalies trigger **Gemini** to write a short contextual summary, which is embedded via `GoogleGenerativeAIEmbeddings` and saved to `pgvector`.
 
-### Phase 4 & 5: LangGraph Agents
-A stateful, multi-agent workflow orchestrated via LangGraph:
-1.  **Master Router:** Uses LLM intent recognition to decide which specialized agents are needed.
-2.  **SQL Agent:** Safely fetches precise historical numerical data from dbt marts.
-3.  **Time-Series Agent:** Dynamically runs ARIMA/XGBoost to generate live future forecasts.
-4.  **Vector RAG Agent:** Performs semantic search in `pgvector` to find explanations for past anomalies.
-5.  **Synthesis Agent:** Ingests the raw numbers, the forecast arrays, and the RAG context to formulate a highly accurate, conversational response to the user.
+### Phase 4 & 5: LangGraph Agents & Full-Stack UI
+A stateful, multi-agent workflow orchestrated via LangGraph, exposed through a Web UI:
+1.  **FastAPI Backend:** Provides the API layer for the agentic workflow.
+2.  **React (Vite) Frontend:** A premium, dark-mode web application featuring real-time chat and dynamic `Recharts` graphs overlaying historical data with AI forecasts.
+3.  **Agents:** Master Router, SQL Agent, Time-Series Agent, Vector RAG Agent, and Synthesis Agent work together utilizing **Gemini 1.5 Flash** to analyze data and synthesize conversational responses.
 
 ---
 

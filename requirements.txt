@@ -1,0 +1,13 @@
+langchain
+langchain-google-genai
+langgraph
+xgboost
+scikit-learn
+pandas
+sqlalchemy
+psycopg2-binary
+yfinance
+fastapi
+uvicorn
+python-dotenv
+statsmodels
