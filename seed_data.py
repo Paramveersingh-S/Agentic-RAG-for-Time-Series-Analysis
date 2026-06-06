@@ -9,7 +9,9 @@ def seed_database():
     bypassing Airflow so you can easily test the project locally.
     """
     print("Connecting to PostgreSQL...")
-    engine = create_engine("postgresql://admin:password@localhost:5432/time_series")
+    import os
+    db_url = os.environ.get("DATABASE_URL", "postgresql://admin:password@localhost:5432/time_series")
+    engine = create_engine(db_url)
     
     tickers = ['AAPL', 'GOOGL', '^GSPC']
     insert_queries = []

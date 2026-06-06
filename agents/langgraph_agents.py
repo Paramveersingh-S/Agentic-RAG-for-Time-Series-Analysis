@@ -72,7 +72,8 @@ def sql_agent_node(state: AgentState):
     
     # Normally, an LLM generates the SQL based on schema.
     # Here we simulate fetching the exact numbers.
-    engine = create_engine("postgresql://admin:password@localhost:5432/time_series")
+    db_url = os.environ.get("DATABASE_URL", "postgresql://admin:password@localhost:5432/time_series")
+    engine = create_engine(db_url)
     
     try:
         df = pd.read_sql("SELECT * FROM marts.mart_time_series_features ORDER BY metric_hour DESC LIMIT 5", engine)
@@ -92,7 +93,8 @@ def time_series_agent_node(state: AgentState):
         return {"forecast_data": {"status": "skipped"}}
         
     try:
-        engine = create_engine("postgresql://admin:password@localhost:5432/time_series")
+        db_url = os.environ.get("DATABASE_URL", "postgresql://admin:password@localhost:5432/time_series")
+        engine = create_engine(db_url)
         df = pd.read_sql("SELECT metric_hour, target_value FROM marts.mart_time_series_features WHERE metric_name = 'AAPL' ORDER BY metric_hour", engine)
         
         # Use baseline ARIMA for demonstration
@@ -127,7 +129,8 @@ def vector_rag_agent_node(state: AgentState):
             query_vector = embeddings.embed_query(query)
             query_vector_str = str(query_vector)
             
-            engine = create_engine("postgresql://admin:password@localhost:5432/time_series")
+            db_url = os.environ.get("DATABASE_URL", "postgresql://admin:password@localhost:5432/time_series")
+            engine = create_engine(db_url)
             
             sql = f"""
                 SELECT content, embedding <-> '{query_vector_str}' AS distance
