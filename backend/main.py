@@ -46,6 +46,8 @@ async def chat_endpoint(request: QueryRequest):
             forecast_data=forecast_data if forecast_data.get("status") != "skipped" else None
         )
     except Exception as e:
+        import traceback
+        traceback.print_exc()
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.get("/api/health")

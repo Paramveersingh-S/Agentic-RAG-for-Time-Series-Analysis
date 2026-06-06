@@ -63,6 +63,14 @@ def synthesis_agent_node(state: AgentState):
             
     return {"messages": [message]}
 
+def router_logic(state: AgentState):
+    decision = state.get("routing_decision", "")
+    targets = []
+    if "SQL" in decision: targets.append("sql_agent")
+    if "FORECAST" in decision: targets.append("time_series_agent")
+    if "RAG" in decision: targets.append("vector_rag_agent")
+    return targets if targets else ["synthesis_agent"]
+
 def build_graph():
     """
     Constructs the LangGraph workflow.
@@ -77,9 +85,8 @@ def build_graph():
     
     workflow.set_entry_point("master_router")
     
-    workflow.add_edge("master_router", "sql_agent")
-    workflow.add_edge("master_router", "time_series_agent")
-    workflow.add_edge("master_router", "vector_rag_agent")
+    # Use dynamic conditional edge to branch in parallel
+    workflow.add_conditional_edges("master_router", router_logic)
     
     workflow.add_edge("sql_agent", "synthesis_agent")
     workflow.add_edge("time_series_agent", "synthesis_agent")
